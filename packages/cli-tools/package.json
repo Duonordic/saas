@@ -1,0 +1,27 @@
+{
+  "name": "@dn/cli-tools",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "create-template": "tsx src/create-template.ts"
+  },
+  "devDependencies": {
+    "@dn/eslint-config": "workspace:*",
+    "@dn/typescript-config": "workspace:*",
+    "@turbo/gen": "^2.5.6",
+    "@types/inquirer": "^9.0.9",
+    "@types/node": "^24.5.2",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "execSync": "^1.0.2",
+    "fs": "0.0.1-security",
+    "inquirer": "^12.9.6",
+    "path": "^0.12.7",
+    "url": "^0.11.4"
+  }
+}

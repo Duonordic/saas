@@ -1,0 +1,7 @@
+{
+  "name": "@dn/sanity-utils",
+  "dependencies": {
+    "@dn/eslint-config": "workspace:*",
+    "@dn/typescript-config": "workspace:*"
+  }
+}

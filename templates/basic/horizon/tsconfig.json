@@ -1,0 +1,13 @@
+{
+  "extends": "@dn/typescript-config/nextjs.json",
+  "compilerOptions": {
+    "baseUrl": "../../../",
+    "paths": {
+      "@/*": ["templates/basic/launchpad/src/*"],
+      "@dn/ui": ["packages/ui/src/*"],
+      "@dn/sanity-utils": ["packages/sanity-utils"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx", "next-env.d.ts", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}

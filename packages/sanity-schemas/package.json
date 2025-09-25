@@ -1,0 +1,6 @@
+{
+  "name": "@dn/sanity-schemas",
+  "dependencies": {
+    "sanity": "^4.9.0"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "duonordic",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "dev:main": "turbo dev --filter='!./templates/**/*",
+    "lint": "turbo lint",
+    "check-types": "turbo check-types",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "new:template": "pnpm --filter cli-tools create-template"
+  },
+  "devDependencies": {
+    "@dn/eslint-config": "workspace:*",
+    "@dn/typescript-config": "workspace:*",
+    "prettier": "^3.6.0",
+    "turbo": "^2.5.4",
+    "typescript": "5.9.2"
+  },
+  "packageManager": "pnpm@10.12.2",
+  "engines": {
+    "node": ">=22.19.0"
+  }
+}
