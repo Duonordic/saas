@@ -22,10 +22,12 @@ export function Sidebar({ tenant }: SidebarProps) {
   const pathname = usePathname();
 
   return (
-    <div className="w-64 bg-card border-r">
-      <div className="p-4 border-b">
+    <div className="w-64 bg-sidebar border-r">
+      <div className="p-4 border-b h-14 flex items-center justify-between">
         <h2 className="text-lg font-semibold">{tenant.domain}</h2>
-        <p className="text-sm text-muted-foreground">{tenant.plan} Plan</p>
+        <p className="text-xs font-mono text-accent-foreground px-2 py-1.5 rounded-full bg-accent">
+          {tenant.plan} Plan
+        </p>
       </div>
       <nav className="p-4">
         <ul className="space-y-2">

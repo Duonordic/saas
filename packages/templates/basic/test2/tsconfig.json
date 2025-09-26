@@ -1,9 +1,9 @@
 {
-  "extends": "@dn/typescript-config/react-library.json",
+  "extends": "@dn/typescript-config/nextjs.json",
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@dn/templates/*": ["./src/*"]
+      "@dn/ui/*": ["./src/*"]
     }
   },
   "include": ["."],

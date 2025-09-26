@@ -4,6 +4,7 @@ import inquirer from "inquirer";
 import fs from "fs";
 import path from "path";
 import chalk from "chalk";
+import yaml from "js-yaml";
 
 // Template configuration
 const PLANS = ["basic", "business", "enterprise"] as const;
@@ -18,17 +19,188 @@ interface TemplateConfig {
   author: string;
 }
 
-// Template file structure
-const TEMPLATE_FILES = {
-  // Main template configuration
-  "template.ts": (
-    config: TemplateConfig
-  ) => `import { TemplateConfig } from "@/lib/templates/types";
+interface LockfilePackage {
+  version: string;
+  resolution?: string;
+}
+
+interface LockfileContent {
+  lockfileVersion: number;
+  importers?: {
+    [path: string]: {
+      dependencies?: Record<string, LockfilePackage>;
+      devDependencies?: Record<string, LockfilePackage>;
+    };
+  };
+  packages?: Record<string, LockfilePackage>;
+}
+
+class TemplateCreator {
+  private config: TemplateConfig | null = null;
+  private packageVersions: Record<string, string> = {};
+
+  async run() {
+    console.log(chalk.cyan("🎨 Duonordic Template Creator"));
+    console.log(
+      chalk.gray(
+        "This will create a new template package for your multi-tenant platform\n"
+      )
+    );
+
+    // Load package versions first
+    await this.loadPackageVersions();
+
+    await this.promptForConfig();
+    await this.validateConfig();
+    await this.createTemplate();
+    await this.updatePlanIndex();
+    await this.updateRegistry();
+    await this.updateRootPackageJson();
+
+    this.showSuccessMessage();
+  }
+
+  private async loadPackageVersions() {
+    const lockfilePath = path.join(process.cwd(), "..", "..", "pnpm-lock.yaml");
+
+    if (!fs.existsSync(lockfilePath)) {
+      console.log(
+        chalk.yellow("⚠️  pnpm-lock.yaml not found, using default versions")
+      );
+      this.packageVersions = this.getDefaultVersions();
+      return;
+    }
+
+    try {
+      const lockfileContent = fs.readFileSync(lockfilePath, "utf8");
+      const lockfile = yaml.load(lockfileContent) as LockfileContent;
+
+      const versions: Record<string, string> = {};
+
+      // Extract versions from packages section (pnpm v6+ format)
+      if (lockfile.packages) {
+        for (const [pkgPath, pkgInfo] of Object.entries(lockfile.packages)) {
+          const pkgNameMatch = pkgPath.match(/\/(@[^\/]+\/[^\/]+|[^\/]+)\/\d/);
+          if (pkgNameMatch && pkgInfo.version) {
+            const pkgName = pkgNameMatch[1];
+            versions[pkgName as keyof typeof versions] = pkgInfo.version;
+          }
+        }
+      }
+
+      // Also check importers for workspace packages (pnpm v7+ format)
+      if (lockfile.importers) {
+        for (const importer of Object.values(lockfile.importers)) {
+          if (importer.dependencies) {
+            for (const [pkgName, pkgInfo] of Object.entries(
+              importer.dependencies
+            )) {
+              if (
+                pkgInfo.version &&
+                !pkgInfo.version.startsWith("workspace:")
+              ) {
+                versions[pkgName] = pkgInfo.version;
+              }
+            }
+          }
+          if (importer.devDependencies) {
+            for (const [pkgName, pkgInfo] of Object.entries(
+              importer.devDependencies
+            )) {
+              if (
+                pkgInfo.version &&
+                !pkgInfo.version.startsWith("workspace:")
+              ) {
+                versions[pkgName] = pkgInfo.version;
+              }
+            }
+          }
+        }
+      }
+
+      this.packageVersions = { ...this.getDefaultVersions(), ...versions };
+      console.log(
+        chalk.gray(
+          `📦 Found ${Object.keys(versions).length} package versions from lockfile`
+        )
+      );
+    } catch (error) {
+      console.log(
+        chalk.yellow(
+          "⚠️  Failed to read pnpm-lock.yaml, using default versions"
+        )
+      );
+      this.packageVersions = this.getDefaultVersions();
+    }
+  }
+
+  private getDefaultVersions(): Record<string, string> {
+    return {
+      react: "^19.1.1",
+      "react-dom": "^19.1.1",
+      typescript: "^5.3.3",
+    };
+  }
+
+  private createPackageJson(config: TemplateConfig) {
+    return {
+      name: `@dn/templates-${config.plan}-${config.id}`,
+      version: "1.0.0",
+      type: "module" as const,
+      private: true,
+      main: "./src/index.ts",
+      types: "./src/index.ts",
+      scripts: {
+        build: "tsc",
+        dev: "tsc --watch",
+        lint: "eslint src --ext .ts,.tsx",
+      },
+
+      devDependencies: {
+        "@dn/ui": "workspace:*",
+        react: this.packageVersions.react,
+        next: this.packageVersions.next,
+        "next-sanity": this.packageVersions["next-sanity"],
+        "next-themes": this.packageVersions["next-themes"],
+        "sanity-image": this.packageVersions["sanity-image"],
+        "lucide-react": this.packageVersions["lucide-react"],
+        zod: this.packageVersions.zod,
+        "react-dom": this.packageVersions["react-dom"],
+        "@dn/typescript-config": "workspace:*",
+        "@dn/eslint-config": "workspace:*",
+        typescript: this.packageVersions.typescript,
+      },
+      files: ["src/**/*"],
+    };
+  }
+
+  private createTsConfig(config: TemplateConfig) {
+    return {
+      extends: "@dn/typescript-config/nextjs.json",
+      compilerOptions: {
+        baseUrl: ".",
+        "@dn/ui/*": ["./src/*"],
+      },
+      include: ["."],
+      exclude: ["node_modules", "dist"],
+      composite: true,
+      declarationMap: true,
+    };
+  }
+
+  // Template file content generators
+  private createTemplateFiles(config: TemplateConfig) {
+    const templateExportName =
+      config.id.replace(/-/g, "_").toUpperCase() + "_TEMPLATE";
+
+    return {
+      // Main template configuration
+      "src/template.ts": `import { TemplateConfig } from "@dn/templates/types";
 import { Layout } from "./components/Layout";
 import { HomePage } from "./components/HomePage";
 import { PageBuilder } from "./components/PageBuilder";
 
-export const ${config.id.replace(/-/g, "_").toUpperCase()}_TEMPLATE: TemplateConfig = {
+export const ${templateExportName}: TemplateConfig = {
   id: "${config.id}",
   name: "${config.name}",
   description: "${config.description}",
@@ -45,21 +217,18 @@ export const ${config.id.replace(/-/g, "_").toUpperCase()}_TEMPLATE: TemplateCon
     defaultTitle: "${config.name}",
     defaultDescription: "${config.description}",
   },
-};
+};`,
+
+      // Index file
+      "src/index.ts": `export { ${templateExportName} } from './template';
+export { Layout } from './components/Layout';
+export { HomePage } from './components/HomePage';
+export { PageBuilder } from './components/PageBuilder';
 `,
 
-  // Index file
-  "index.ts": (
-    config: TemplateConfig
-  ) => `export { ${config.id.replace(/-/g, "_").toUpperCase()}_TEMPLATE } from './template';
-export * from './components';
-`,
-
-  // Components
-  "components/Layout.tsx": (
-    config: TemplateConfig
-  ) => `import React from 'react';
-import { TemplateComponentProps } from "@/lib/templates/types";
+      // Components
+      "src/components/Layout.tsx": `import React from 'react';
+import { TemplateComponentProps } from "@dn/templates/types";
 
 export const Layout = ({ tenant, children }: TemplateComponentProps) => (
   <div className="min-h-screen bg-white">
@@ -75,13 +244,10 @@ export const Layout = ({ tenant, children }: TemplateComponentProps) => (
       </div>
     </footer>
   </div>
-);
-`,
+);`,
 
-  "components/HomePage.tsx": (
-    config: TemplateConfig
-  ) => `import React from 'react';
-import { TemplateComponentProps } from "@/lib/templates/types";
+      "src/components/HomePage.tsx": `import React from 'react';
+import { TemplateComponentProps } from "@dn/templates/types";
 
 export const HomePage = ({ tenant, pageData }: TemplateComponentProps) => (
   <div className="container mx-auto px-4 py-8">
@@ -89,22 +255,11 @@ export const HomePage = ({ tenant, pageData }: TemplateComponentProps) => (
     <p className="text-lg text-gray-600">
       This is your new ${config.name} template.
     </p>
-    {pageData?.pageBuilder && (
-      <PageBuilder
-        pageBuilder={pageData.pageBuilder}
-        id={pageData._id}
-        type={pageData._type}
-        tenantProjectId={tenant.sanityProjectId}
-      />
-    )}
   </div>
-);
-`,
+);`,
 
-  "components/PageBuilder.tsx": (
-    config: TemplateConfig
-  ) => `import React from 'react';
-import { PageBuilderProps } from "@/lib/templates/types";
+      "src/components/PageBuilder.tsx": `import React from 'react';
+import { PageBuilderProps } from "@dn/templates/types";
 
 export const PageBuilder = ({ pageBuilder, id, type, tenantProjectId }: PageBuilderProps) => (
   <div className="space-y-8">
@@ -115,20 +270,10 @@ export const PageBuilder = ({ pageBuilder, id, type, tenantProjectId }: PageBuil
       </section>
     ))}
   </div>
-);
-`,
+);`,
 
-  "components/index.ts": (
-    config: TemplateConfig
-  ) => `export { Layout } from './Layout';
-export { HomePage } from './HomePage';
-export { PageBuilder } from './PageBuilder';
-`,
-
-  // Schema
-  "schema.ts": (
-    config: TemplateConfig
-  ) => `// Sanity schema definitions for ${config.name} template
+      // Schema
+      "src/schema.ts": `// Sanity schema definitions for ${config.name} template
 export const ${config.id.replace(/-/g, "_")}Schema = {
   name: '${config.id}',
   title: '${config.name}',
@@ -145,15 +290,22 @@ export const ${config.id.replace(/-/g, "_")}Schema = {
       title: 'Description',
       type: 'text',
     },
-    // Add more fields as needed for your template
   ],
-};
-`,
+};`,
 
-  // README
-  "README.md": (config: TemplateConfig) => `# ${config.name} Template
+      // README
+      "README.md": `# ${config.name} Template
 
 A ${config.plan}-level template for the Duonordic platform.
+
+## Package Structure
+
+This template is a standalone package that can be imported as:
+\`\`\`typescript
+import { ${templateExportName} } from "@dn/templates/${config.plan}/${config.id}";
+// or
+import { ${templateExportName} } from "@dn/templates/${config.plan}";
+\`\`\`
 
 ## Features
 
@@ -162,44 +314,16 @@ A ${config.plan}-level template for the Duonordic platform.
 - SEO optimized
 - Easy to customize
 
-## Supported Pages
+## Development
 
-- Home
-- About
-- Contact
-
-## Usage
-
-This template is automatically available for users on the ${config.plan} plan.
-
-## Customization
-
-To customize this template, edit the components in this directory.
-
-## Sanity Schema
-
-This template includes a basic Sanity schema. Extend it as needed for your content requirements.
+\`\`\`bash
+cd packages/templates/${config.plan}/${config.id}
+pnpm dev    # Watch mode
+pnpm build  # Build package
+pnpm lint   # Lint code
+\`\`\`
 `,
-};
-
-class TemplateCreator {
-  private config: TemplateConfig | null = null;
-
-  async run() {
-    console.log(chalk.cyan("🎨 Duonordic Template Creator"));
-    console.log(
-      chalk.gray(
-        "This will create a new template for your multi-tenant platform\n"
-      )
-    );
-
-    await this.promptForConfig();
-    await this.validateConfig();
-    await this.createTemplate();
-    await this.updatePlanIndex();
-    await this.updateRegistry();
-
-    this.showSuccessMessage();
+    };
   }
 
   private async promptForConfig() {
@@ -278,58 +402,72 @@ class TemplateCreator {
 
   private getTemplatePath(): string {
     if (!this.config) throw new Error("Configuration not set");
-
-    const templatesDir = path.join(
+    return path.join(
       process.cwd(),
       "..",
       "..",
       "packages",
-      "templates"
+      "templates",
+      this.config.plan,
+      this.config.id
     );
-    return path.join(templatesDir, this.config.plan, this.config.id);
   }
 
   private getPlanPath(): string {
     if (!this.config) throw new Error("Configuration not set");
-
-    const templatesDir = path.join(
+    return path.join(
       process.cwd(),
       "..",
       "..",
       "packages",
-      "templates"
+      "templates",
+      this.config.plan
     );
-    return path.join(templatesDir, this.config.plan);
   }
 
   private async createTemplate() {
     if (!this.config) throw new Error("Configuration not set");
 
     const templatePath = this.getTemplatePath();
-
-    // Create template directory
     fs.mkdirSync(templatePath, { recursive: true });
 
-    // Create each template file
-    for (const [filePath, generator] of Object.entries(TEMPLATE_FILES)) {
+    // Create package.json
+    const packageJson = this.createPackageJson(this.config);
+    fs.writeFileSync(
+      path.join(templatePath, "package.json"),
+      JSON.stringify(packageJson, null, 2),
+      "utf8"
+    );
+    console.log(chalk.green("✓ Created package.json"));
+
+    // Create tsconfig.json
+    const tsConfig = this.createTsConfig(this.config);
+    fs.writeFileSync(
+      path.join(templatePath, "tsconfig.json"),
+      JSON.stringify(tsConfig, null, 2),
+      "utf8"
+    );
+    console.log(chalk.green("✓ Created tsconfig.json"));
+
+    // Create template files
+    const templateFiles = this.createTemplateFiles(this.config);
+    for (const [filePath, content] of Object.entries(templateFiles)) {
       const fullPath = path.join(templatePath, filePath);
       const dirName = path.dirname(fullPath);
 
-      // Create directory if it doesn't exist
       fs.mkdirSync(dirName, { recursive: true });
-
-      const content = generator(this.config);
       fs.writeFileSync(fullPath, content, "utf8");
       console.log(chalk.green(`✓ Created ${filePath}`));
     }
 
     // Create preview image placeholder
-    const previewDir = path.join(templatePath, "public");
-    fs.mkdirSync(previewDir, { recursive: true });
+    const publicDir = path.join(templatePath, "public");
+    fs.mkdirSync(publicDir, { recursive: true });
     fs.writeFileSync(
-      path.join(previewDir, `${this.config.id}-preview.jpg`),
+      path.join(publicDir, `${this.config.id}-preview.jpg`),
       "// Placeholder for template preview image"
     );
+    console.log(chalk.green("✓ Created preview image placeholder"));
   }
 
   private async updatePlanIndex() {
@@ -337,33 +475,24 @@ class TemplateCreator {
 
     const planPath = this.getPlanPath();
     const indexPath = path.join(planPath, "index.ts");
-
-    // Ensure plan directory exists
-    fs.mkdirSync(planPath, { recursive: true });
-
     const templateExportName =
       this.config.id.replace(/-/g, "_").toUpperCase() + "_TEMPLATE";
-    const importStatement = `export { ${templateExportName} } from './${this.config.id}';`;
+    const importStatement = `export { ${templateExportName} } from '@dn/templates-${this.config.plan}-${this.config.id}';`;
+
+    fs.mkdirSync(planPath, { recursive: true });
 
     if (fs.existsSync(indexPath)) {
-      // Read existing index file
       let indexContent = fs.readFileSync(indexPath, "utf8");
-
-      // Check if export already exists
-      if (!indexContent.includes(`'./${this.config.id}'`)) {
-        // Add new export
+      if (
+        !indexContent.includes(
+          `@dn/templates-${this.config.plan}-${this.config.id}`
+        )
+      ) {
         indexContent += `\n${importStatement}`;
         fs.writeFileSync(indexPath, indexContent, "utf8");
         console.log(chalk.green(`✓ Updated ${this.config.plan}/index.ts`));
-      } else {
-        console.log(
-          chalk.yellow(
-            `⚠️  Export already exists in ${this.config.plan}/index.ts`
-          )
-        );
       }
     } else {
-      // Create new index file
       const indexContent = `// Export all ${this.config.plan} plan templates\n${importStatement}\n`;
       fs.writeFileSync(indexPath, indexContent, "utf8");
       console.log(chalk.green(`✓ Created ${this.config.plan}/index.ts`));
@@ -383,7 +512,6 @@ class TemplateCreator {
       "templates",
       "registry.ts"
     );
-
     if (!fs.existsSync(registryPath)) {
       console.log(
         chalk.yellow("⚠️  Registry file not found, skipping registry update")
@@ -392,17 +520,13 @@ class TemplateCreator {
     }
 
     let registryContent = fs.readFileSync(registryPath, "utf8");
-
     const templateExportName =
       this.config.id.replace(/-/g, "_").toUpperCase() + "_TEMPLATE";
-
-    // Add import statement
     const importStatement = `import { ${templateExportName} } from "@dn/templates/${this.config.plan}";`;
 
     if (!registryContent.includes(importStatement)) {
       const importRegex = /import.*from.*;(\r?\n)/g;
       const matches = registryContent.match(importRegex);
-
       if (matches && matches.length > 0) {
         const lastImport = matches[matches.length - 1];
         if (lastImport) {
@@ -412,19 +536,15 @@ class TemplateCreator {
           );
         }
       } else {
-        // No imports found, add at the beginning
         registryContent = importStatement + "\n\n" + registryContent;
       }
     }
 
-    // Add to templateRegistry
     const templateEntry = `  "${this.config.id}": ${templateExportName},`;
-
     if (!registryContent.includes(`"${this.config.id}":`)) {
       const registryRegex =
         /const templateRegistry: Record<string, TemplateConfig> = {([^}]*)}/s;
       const match = registryContent.match(registryRegex);
-
       if (match && match[1]) {
         const existingContent = match[1].trim();
         const newContent = existingContent
@@ -441,44 +561,59 @@ class TemplateCreator {
     console.log(chalk.green("✓ Updated template registry"));
   }
 
+  private async updateRootPackageJson() {
+    if (!this.config) throw new Error("Configuration not set");
+
+    const rootPackagePath = path.join(
+      process.cwd(),
+      "..",
+      "..",
+      "packages",
+      "templates",
+      "package.json"
+    );
+
+    let rootPackage = {
+      name: "@dn/templates",
+      version: "1.0.0",
+      type: "module",
+      private: true,
+      workspaces: ["basic/*", "business/*", "enterprise/*"],
+      exports: {} as Record<string, string>,
+      scripts: {
+        build: "turbo run build",
+        dev: "turbo run dev --parallel",
+      },
+    };
+
+    if (fs.existsSync(rootPackagePath)) {
+      rootPackage = {
+        ...rootPackage,
+        ...JSON.parse(fs.readFileSync(rootPackagePath, "utf8")),
+      };
+    }
+
+    // Add export for this template
+    rootPackage.exports[`./${this.config.plan}/${this.config.id}`] =
+      `./${this.config.plan}/${this.config.id}/src/index.ts`;
+
+    fs.writeFileSync(rootPackagePath, JSON.stringify(rootPackage, null, 2));
+    console.log(chalk.green("✓ Updated root templates package.json"));
+  }
+
   private showSuccessMessage() {
     if (!this.config) throw new Error("Configuration not set");
 
-    console.log("\n" + chalk.green("🎉 Template created successfully!"));
-    console.log(chalk.cyan("\nTemplate structure:"));
-    console.log(`📁 templates/${this.config.plan}/${this.config.id}/`);
-    console.log(`   ├── components/`);
-    console.log(`   │   ├── Layout.tsx`);
-    console.log(`   │   ├── HomePage.tsx`);
-    console.log(`   │   ├── PageBuilder.tsx`);
-    console.log(`   │   └── index.ts`);
-    console.log(`   ├── public/`);
-    console.log(`   │   └── ${this.config.id}-preview.jpg`);
-    console.log(`   ├── template.ts`);
-    console.log(`   ├── schema.ts`);
-    console.log(`   ├── index.ts`);
-    console.log(`   └── README.md`);
-
+    console.log(
+      "\n" + chalk.green("🎉 Template package created successfully!")
+    );
     console.log(chalk.cyan("\nNext steps:"));
-    console.log(`1. Customize the template components`);
-    console.log(`2. Add a real preview image`);
-    console.log(`3. Extend the Sanity schema if needed`);
     console.log(
-      `4. Build the templates package: ${chalk.cyan("pnpm run build")}`
+      `1. cd packages/templates/${this.config.plan}/${this.config.id}`
     );
-    console.log(`5. Test the template in your dashboard`);
-
-    console.log(chalk.gray("\nThe template is now ready for development."));
-
-    console.log(chalk.cyan("\nImport usage:"));
-    console.log(`${chalk.gray("// Import specific template")}`);
-    console.log(
-      `import { ${this.config.id.replace(/-/g, "_").toUpperCase()}_TEMPLATE } from '@dn/templates/${this.config.plan}';`
-    );
-    console.log(`${chalk.gray("// Import all from plan")}`);
-    console.log(
-      `import * as ${this.config.plan}Templates from '@dn/templates/${this.config.plan}';`
-    );
+    console.log(`2. pnpm install`);
+    console.log(`3. pnpm dev # Start development`);
+    console.log(`4. Customize the template components`);
   }
 }
 

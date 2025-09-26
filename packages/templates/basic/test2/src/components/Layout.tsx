@@ -1,11 +1,11 @@
-import React from 'react';
-import { TemplateComponentProps } from "@/lib/templates/types";
+import React from "react";
+import { TemplateComponentProps } from "@dn/templates/types";
 
 export const Layout = ({ tenant, children }: TemplateComponentProps) => (
   <div className="min-h-screen bg-white">
     <header className="border-b">
       <div className="container mx-auto px-4 py-4">
-        <h1 className="text-2xl font-bold">test</h1>
+        <h1 className="text-2xl font-bold">test2</h1>
       </div>
     </header>
     <main>{children}</main>

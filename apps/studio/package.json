@@ -1,5 +1,9 @@
 {
   "name": "studio",
+  "exports": {
+    "./component": "./dist/StudioComponent.js",
+    "./config": "./dist/sanity.config.js"
+  },
   "private": true,
   "version": "1.0.0",
   "main": "package.json",

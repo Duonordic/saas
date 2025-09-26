@@ -16,13 +16,13 @@ export default async function DashboardLayout({
     <DashboardShell tenant={tenant}>
       <div className="flex h-screen">
         {/* Sanity Studio for structured content */}
-        <aside className="w-80 border-r bg-muted/40">
-          <SanityStudio
+        {/* <aside className="w-80 border-r bg-muted/40">
+        </aside> */}
+        {/* <SanityStudio
             projectId={tenant.sanityProjectId}
             dataset="production"
             isDraftMode={isDraftMode}
-          />
-        </aside>
+          /> */}
 
         {/* Main content area with visual editing */}
         <main className="flex-1 flex flex-col overflow-hidden">
