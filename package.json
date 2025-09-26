@@ -5,17 +5,19 @@
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
-    "dev:main": "turbo dev --filter='!./templates/**/*",
+    "dev:main": "turbo run dev --filter='!./templates/**/*",
+    "dev:docker": "docker-compose up --build",
     "lint": "turbo lint",
     "check-types": "turbo check-types",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "new:template": "pnpm --filter cli-tools create-template"
+    "create-template": "pnpm --filter @dn/cli-tools create-template",
+    "ui:add": "pnpm --filter @dn/ui ui:add-component --"
   },
   "devDependencies": {
     "@dn/eslint-config": "workspace:*",
     "@dn/typescript-config": "workspace:*",
     "prettier": "^3.6.0",
-    "turbo": "^2.5.4",
+    "turbo": "^2.5.8",
     "typescript": "5.9.2"
   },
   "packageManager": "pnpm@10.12.2",

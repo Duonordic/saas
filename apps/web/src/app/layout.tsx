@@ -29,28 +29,20 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  preconnect("https://cdn.sanity.io");
-  const nav = await getNavigationData();
+  const isDraftMode = (await draftMode()).isEnabled;
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${fontSans.variable} ${fontMono.variable} font-sans antialiased`}
       >
-        <Providers>
-          <Navbar navbarData={nav.navbarData} settingsData={nav.settingsData} />
-          {children}
-          <Suspense fallback={<FooterSkeleton />}>
-            <FooterServer />
-          </Suspense>
-          <SanityLive />
-          <CombinedJsonLd includeWebsite includeOrganization />
-          {(await draftMode()).isEnabled && (
-            <>
-              <PreviewBar />
-              <VisualEditing />
-            </>
-          )}
-        </Providers>
+        {children}
+        {isDraftMode && (
+          <>
+            {/* Visual editing components for Sanity */}
+            <script src="https://cdn.sanity.io/visual-editing.js" />
+          </>
+        )}
       </body>
     </html>
   );

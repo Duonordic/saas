@@ -1,0 +1,59 @@
+{
+  "name": "@dn/templates",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "exports": {
+    "./*": {
+      "types": "./dist/*/index.d.ts",
+      "import": "./dist/*/index.js",
+      "default": "./dist/*/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "lint": "turbo run lint",
+    "type-check": "turbo run type-check",
+    "clean": "turbo run clean"
+  },
+  "dependencies": {
+    "@dn/eslint-config": "workspace:*",
+    "@dn/typescript-config": "workspace:*",
+    "@tailwindcss/postcss": "^4.1.12",
+    "@types/node": "^20.19.9",
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7",
+    "tailwindcss": "^4.1.12"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0",
+    "next": ">=15.0.0"
+  },
+  "devDependencies": {
+    "@turbo/gen": "^2.5.6",
+    "eslint": "^9.32.0",
+    "turbo": "^2.5.8",
+    "typescript": "^5.9.2",
+    "@dn/eslint-config": "workspace:*",
+    "@dn/typescript-config": "workspace:*",
+    "@radix-ui/react-accordion": "^1.2.12",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-dropdown-menu": "^2.1.16",
+    "@radix-ui/react-navigation-menu": "^1.2.14",
+    "@radix-ui/react-slot": "^1.2.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.539.0",
+    "next-themes": "^0.4.6",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "tailwind-merge": "^3.3.1",
+    "tw-animate-css": "^1.3.7",
+    "zod": "^4.0.17"
+  }
+}

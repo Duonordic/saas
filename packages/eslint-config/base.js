@@ -9,7 +9,7 @@ import tseslint from "typescript-eslint";
  *
  * @type {import("eslint").Linter.Config}
  * */
-export const config = [
+const config = [
   js.configs.recommended,
   eslintConfigPrettier,
   ...tseslint.configs.recommended,
@@ -30,3 +30,5 @@ export const config = [
     ignores: ["dist/**"],
   },
 ];
+
+export { config };

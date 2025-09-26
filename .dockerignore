@@ -1,0 +1,16 @@
+# Ignore Node.js module directories and lock files for specific package managers
+node_modules
+
+# Ignore build and cache directories
+.next/
+dist/
+.turbo/
+.sanity/
+
+# Ignore development and environment-specific files
+.env*
+.DS_Store
+*.log
+
+# Ignore uncomplete/ not functional
+addons/

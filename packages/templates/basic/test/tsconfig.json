@@ -1,0 +1,13 @@
+{
+  "extends": "@dn/typescript-config/react-library.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@dn/templates/*": ["./src/*"]
+    }
+  },
+  "include": ["."],
+  "exclude": ["node_modules", "dist"],
+  "composite": true,
+  "declarationMap": true
+}

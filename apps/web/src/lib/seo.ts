@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import type { Maybe } from "@/types";
 import { capitalize, getBaseUrl } from "@/utils";
+import { Tenant } from "./tenant";
 
 // Site-wide configuration interface
 interface SiteConfig {
@@ -31,10 +32,17 @@ interface OgImageParams {
 
 // Default site configuration
 const siteConfig: SiteConfig = {
-  title: "Roboto Studio Demo",
-  description: "Roboto Studio Demo",
-  twitterHandle: "@studioroboto",
-  keywords: ["roboto", "studio", "demo", "sanity", "next", "react", "template"],
+  title: "Duonordic",
+  description: "A powerful multi-tenant SaaS platform",
+  twitterHandle: "@",
+  keywords: [
+    "saas",
+    "multi-tenant",
+    "website",
+    "nextjs",
+    "sanity",
+    "data ownership",
+  ],
 };
 
 function generateOgImageUrl(params: OgImageParams = {}): string {
@@ -153,4 +161,93 @@ export function getSEOMetadata(page: PageSeoData = {}): Metadata {
     ...defaultMetadata,
     ...pageOverrides,
   };
+}
+
+interface TenantPageSeoData {
+  title?: string;
+  description?: string;
+  slug?: string;
+  contentId?: string;
+  contentType?: string;
+  keywords?: string[];
+  seoNoIndex?: boolean;
+  pageType?: Extract<Metadata["openGraph"], { type: string }>["type"];
+  // Allow any additional metadata properties
+  [key: string]: any;
+}
+
+function getTenantBaseUrl(tenant: Tenant): string {
+  // For tenant sites, use their custom domain
+  if (tenant.domain && tenant.domain !== "unknown.com") {
+    return `https://${tenant.domain}`;
+  }
+
+  // Fallback to platform domain
+  return process.env.NEXT_PUBLIC_APP_URL || "https://saas.com";
+}
+
+export function generateTenantMetadata(
+  tenant: Tenant,
+  page: TenantPageSeoData = {},
+): Metadata {
+  const baseUrl = getTenantBaseUrl(tenant);
+  const slug = page.slug || "/";
+
+  // Enhance page data with tenant-specific information
+  const enhancedPageData = {
+    ...page,
+    // Use tenant's site title/description if available
+    title: page.title || tenant.siteTitle,
+    description: page.description || tenant.siteDescription,
+    keywords: [...(page.keywords || []), ...(tenant.siteKeywords || [])],
+    // Ensure proper URL construction
+    slug: slug,
+  };
+
+  // Use your existing SEO function but override metadataBase
+  const metadata = getSEOMetadata(enhancedPageData);
+
+  return {
+    ...metadata,
+    metadataBase: new URL(baseUrl),
+    // Ensure canonical URL uses tenant's domain
+    alternates: {
+      canonical: `${baseUrl}${slug === "/" ? "" : slug}`,
+    },
+    // Update openGraph URL
+    openGraph: metadata.openGraph
+      ? {
+          ...metadata.openGraph,
+          url: `${baseUrl}${slug === "/" ? "" : slug}`,
+        }
+      : undefined,
+  };
+}
+
+// Platform-specific metadata (for marketing site)
+export function generatePlatformMetadata(
+  page: TenantPageSeoData = {},
+): Metadata {
+  return getSEOMetadata(page);
+}
+
+// Helper to automatically detect context and generate appropriate metadata
+export async function generatePageMetadata(
+  page: TenantPageSeoData = {},
+): Promise<Metadata> {
+  try {
+    const { getTenantFromHeaders } = await import("./tenant");
+    const tenant = await getTenantFromHeaders();
+
+    // If we have a valid tenant (not fallback), use tenant-specific metadata
+    if (tenant.id !== "fallback") {
+      return generateTenantMetadata(tenant, page);
+    }
+
+    // Otherwise, use platform metadata
+    return generatePlatformMetadata(page);
+  } catch (error) {
+    // Fallback to platform metadata
+    return generatePlatformMetadata(page);
+  }
 }
