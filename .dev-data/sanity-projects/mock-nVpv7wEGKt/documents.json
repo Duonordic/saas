@@ -1,0 +1,10 @@
+{
+  "pages": [],
+  "posts": [],
+  "settings": {
+    "_id": "siteSettings",
+    "_type": "siteSettings",
+    "title": "acme corp CMS",
+    "description": "Welcome to acme corp CMS"
+  }
+}

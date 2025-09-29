@@ -1,0 +1,12 @@
+[
+  {
+    "id": "O1zQWiTqeH2pBczgYpUdw",
+    "subdomain": "acme",
+    "companyName": "acme corp",
+    "sanityProjectId": "mock-nVpv7wEGKt",
+    "sanityToken": "skPMU7lGHzp79aq0g-OsSvWHxYQrrVgxby",
+    "port": 3001,
+    "status": "active",
+    "createdAt": "2025-09-29T19:41:49.172Z"
+  }
+]
