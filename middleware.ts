@@ -25,6 +25,7 @@ export async function middleware(request: NextRequest) {
 
   // Add tenant information to request headers
   const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pathname", request.nextUrl.pathname);
 
   if (tenant) {
     requestHeaders.set("x-tenant-id", tenant.id);

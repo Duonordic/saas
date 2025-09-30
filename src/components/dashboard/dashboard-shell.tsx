@@ -9,19 +9,30 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import {
-  Sidebar,
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Tenant } from "@/generated/prisma";
+import { PropsWithChildren } from "react";
+
+interface BreadCrumb {
+  label: string;
+  href: string;
+  isLast: boolean;
+}
 
 interface DashboardShellProps {
   tenant: Tenant;
-  children: React.ReactNode;
+  breadcrumbs: BreadCrumb[];
 }
 
-export function DashboardShell({ tenant, children }: DashboardShellProps) {
+export async function DashboardShell({
+  tenant,
+  children,
+  breadcrumbs,
+}: PropsWithChildren<DashboardShellProps>) {
+  /* TODO: Implement breadcrumbs properly */
   return (
     <SidebarProvider defaultOpen>
       <AppSidebar tenant={tenant} />
@@ -36,15 +47,26 @@ export function DashboardShell({ tenant, children }: DashboardShellProps) {
             />
             <Breadcrumb>
               <BreadcrumbList>
-                <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="#">
-                    Building Your Application
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden md:block" />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Data Fetching</BreadcrumbPage>
-                </BreadcrumbItem>
+                {breadcrumbs.map((crumb, index) => (
+                  <div key={crumb.href} className="contents">
+                    <BreadcrumbItem
+                      className={index === 0 ? "hidden md:block" : ""}
+                    >
+                      {crumb.isLast ? (
+                        <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                      ) : (
+                        <BreadcrumbLink href={crumb.href}>
+                          {crumb.label}
+                        </BreadcrumbLink>
+                      )}
+                    </BreadcrumbItem>
+                    {!crumb.isLast && (
+                      <BreadcrumbSeparator
+                        className={index === 0 ? "hidden md:block" : ""}
+                      />
+                    )}
+                  </div>
+                ))}
               </BreadcrumbList>
             </Breadcrumb>
           </div>

@@ -44,6 +44,32 @@ export default async function DashboardLayout({
     return notFound();
   }
 
+  const pathname = requestHeaders.get("x-pathname") || "";
+  console.log("PATHNAME: ", pathname);
+  const segments = pathname.split("/").filter(Boolean);
+
+  const breadcrumbs = segments.map((segment, index) => {
+    const href = "/" + segments.slice(0, index + 1).join("/");
+    const isLast = index === segments.length - 1;
+
+    // Format the segment text (capitalize and replace hyphens/underscores)
+    const label = segment
+      .replace(/[-_]/g, " ")
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+
+    return {
+      label,
+      href,
+      isLast,
+    };
+  });
+
   // If we reach here, 'tenant' is a valid Tenant object
-  return <DashboardShell tenant={tenant}>{children}</DashboardShell>;
+  return (
+    <DashboardShell breadcrumbs={breadcrumbs} tenant={tenant}>
+      {children}
+    </DashboardShell>
+  );
 }
