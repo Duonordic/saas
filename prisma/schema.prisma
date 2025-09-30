@@ -4,6 +4,8 @@
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
+// UPDATED FOR VERCEL MIGRATION - FIXED UUID ISSUE
+
 generator client {
   provider = "prisma-client-js"
   output   = "../src/generated/prisma"
@@ -14,133 +16,105 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Tenant {
-  id                  String    @id @default(cuid()) @db.Uuid
-  slug                String    @unique @db.VarChar(63)
-  name                String    @db.VarChar(255)
-  domain              String?   @unique @db.VarChar(255)
-  status              TenantStatus @default(active)
-  plan                PlanType @default(free)
+// Template model - REMOVED: dockerfile_path, build_context
+model Template {
+  id            String           @id @default(uuid()) @db.Uuid
+  slug          String           @unique @db.VarChar(63)
+  name          String           @db.VarChar(255)
+  description   String           @db.Text
+  category      TemplateCategory
+  thumbnail_url String?          @db.VarChar(500)
   
-  // JSON configuration
-  config              Json? @default("{\"theme\":{\"primaryColor\":\"#3B82F6\",\"secondaryColor\":\"#10B981\",\"fontFamily\":\"Inter\",\"borderRadius\":\"8px\",\"darkMode\":false},\"features\":{\"maxUsers\":5,\"customDomain\":false,\"apiAccess\":false,\"advancedAnalytics\":false},\"branding\":{\"logoUrl\":null,\"faviconUrl\":null,\"customCSS\":null}}")
+  // Repository info
+  repo_url      String           @db.VarChar(500)
+  repo_branch   String           @default("main") @db.VarChar(100)
+  demo_url      String?          @db.VarChar(500)
+  
+  // Configuration
+  config_schema Json?            @default("{}") // JSON Schema for customizable options
+  default_env   Json?            @default("{}") // Default environment variables
+  
+  // Metadata
+  version       String           @default("1.0.0") @db.VarChar(50)
+  author        String?          @db.VarChar(255)
+  tags          String[]         @default([])
+  is_published  Boolean          @default(false)
+  
+  // Stats
+  deploy_count  Int              @default(0)
+  
+  created_at    DateTime         @default(now()) @db.Timestamptz
+  updated_at    DateTime         @updatedAt @db.Timestamptz
+  
+  // Relations
+  deployments   Deployment[]
+  
+  @@map("templates")
+}
+
+// Deployment model - UPDATED FOR VERCEL
+// REMOVED: container_id, container_name, image_name, port
+// ADDED: vercel_deployment_id
+model Deployment {
+  id                    String           @id @default(uuid()) @db.Uuid
+  tenant_id             String           @db.Uuid
+  template_id           String           @db.Uuid
+  
+  // Vercel integration - NEW!
+  vercel_deployment_id  String           @unique @db.VarChar(255)
+  
+  // Deployment info
+  name                  String           @db.VarChar(255)
+  status                DeploymentStatus @default(pending)
+  
+  // Domain configuration
+  subdomain             String           @unique @db.VarChar(63)
+  custom_domain         String?          @unique @db.VarChar(255)
+  ssl_enabled           Boolean          @default(true) // Vercel handles SSL automatically
+  
+  // Configuration
+  env_vars              Json?            @default("{}")
+  build_config          Json?            @default("{}")
+  
+  // URLs
+  deployment_url        String?          @db.VarChar(500)
+  preview_url           String?          @db.VarChar(500)
+  
+  // Status tracking
+  build_logs            String?          @db.Text
+  error_message         String?          @db.Text
+  last_deployed_at      DateTime?        @db.Timestamptz
+  health_check_url      String?          @db.VarChar(500)
+  last_health_check     DateTime?        @db.Timestamptz
   
   // Timestamps
-  trial_ends_at       DateTime? @db.Timestamptz
-  subscription_ends_at DateTime? @db.Timestamptz
-  created_at          DateTime @default(now()) @db.Timestamptz
-  updated_at          DateTime @updatedAt @db.Timestamptz
-  deleted_at          DateTime? @db.Timestamptz
+  created_at            DateTime         @default(now()) @db.Timestamptz
+  updated_at            DateTime         @updatedAt @db.Timestamptz
+  deleted_at            DateTime?        @db.Timestamptz
   
   // Relations
-  settings            TenantSetting[]
-  users               User[]
-  auditLogs           AuditLog[]
-  apiKeys             ApiKey[]
-  posts               Post[]
+  tenant                Tenant           @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  template              Template         @relation(fields: [template_id], references: [id])
   
-  @@map("tenants")
+  @@index([tenant_id])
+  @@index([template_id])
+  @@index([vercel_deployment_id])
+  @@map("deployments")
 }
 
-model TenantSetting {
-  id          String   @id @default(cuid()) @db.Uuid
-  tenant_id   String   @db.Uuid
-  key         String   @db.VarChar(255)
-  value       Json?
-  created_at  DateTime @default(now()) @db.Timestamptz
-  updated_at  DateTime @updatedAt @db.Timestamptz
-  
-  // Relations
-  tenant      Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  
-  @@unique([tenant_id, key])
-  @@map("tenant_settings")
+// UPDATED: Deployment status enum aligned with Vercel lifecycle
+enum DeploymentStatus {
+  pending      // Initial state, waiting to start
+  queued       // Queued in Vercel
+  building     // Build in progress
+  deploying    // Deployment in progress
+  running      // Successfully deployed and running (READY in Vercel)
+  stopped      // Manually stopped
+  failed       // Build or deployment failed (ERROR in Vercel)
+  deleting     // Being deleted
 }
 
-model User {
-  id              String   @id @default(cuid()) @db.Uuid
-  tenant_id       String   @db.Uuid
-  email           String   @db.VarChar(255)
-  name            String?  @db.VarChar(255)
-  role            UserRole @default(member)
-  
-  // Auth fields
-  password_hash   String?  @db.VarChar(255)
-  email_verified  Boolean  @default(false)
-  last_login_at   DateTime? @db.Timestamptz
-  
-  // Timestamps
-  created_at      DateTime @default(now()) @db.Timestamptz
-  updated_at      DateTime @updatedAt @db.Timestamptz
-  deleted_at      DateTime? @db.Timestamptz
-  
-  // Relations
-  tenant          Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  auditLogs       AuditLog[]
-  posts           Post[]
-  
-  @@unique([tenant_id, email])
-  @@map("users")
-}
-
-model AuditLog {
-  id              String   @id @default(cuid()) @db.Uuid
-  tenant_id       String   @db.Uuid
-  user_id         String?  @db.Uuid
-  action          String   @db.VarChar(100)
-  resource_type   String?  @db.VarChar(100)
-  resource_id     String?  @db.Uuid
-  changes         Json?
-  ip_address      String?  @db.Inet
-  user_agent      String?  @db.Text
-  created_at      DateTime @default(now()) @db.Timestamptz
-  
-  // Relations
-  tenant          Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  user            User?    @relation(fields: [user_id], references: [id])
-  
-  @@map("audit_logs")
-}
-
-model ApiKey {
-  id           String   @id @default(cuid()) @db.Uuid
-  tenant_id    String   @db.Uuid
-  name         String   @db.VarChar(255)
-  key_hash     String   @unique @db.VarChar(255)
-  last_used_at DateTime? @db.Timestamptz
-  expires_at   DateTime? @db.Timestamptz
-  scopes       Json?    @default("[\"read\"]")
-  created_at   DateTime @default(now()) @db.Timestamptz
-  revoked_at   DateTime? @db.Timestamptz
-  
-  // Relations
-  tenant       Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  
-  @@map("api_keys")
-}
-
-model Post {
-  id           String   @id @default(cuid()) @db.Uuid
-  tenant_id    String   @db.Uuid
-  author_id    String   @db.Uuid
-  title        String   @db.VarChar(255)
-  slug         String   @db.VarChar(255)
-  content      String?  @db.Text
-  published    Boolean  @default(false)
-  published_at DateTime? @db.Timestamptz
-  metadata     Json?    @default("{}")
-  created_at   DateTime @default(now()) @db.Timestamptz
-  updated_at   DateTime @updatedAt @db.Timestamptz
-  deleted_at   DateTime? @db.Timestamptz
-  
-  // Relations
-  tenant       Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  author       User     @relation(fields: [author_id], references: [id], onDelete: Cascade)
-  
-  @@unique([tenant_id, slug])
-  @@map("posts")
-}
-
+// Keep existing enums
 enum TenantStatus {
   active
   suspended
@@ -160,4 +134,127 @@ enum UserRole {
   admin
   member
   viewer
+}
+
+enum TemplateCategory {
+  ecommerce
+  blog
+  portfolio
+  saas
+  landing
+  dashboard
+  documentation
+  community
+  other
+}
+
+// Keep all other models unchanged
+model Tenant {
+  id                   String        @id @default(uuid()) @db.Uuid
+  slug                 String        @unique @db.VarChar(63)
+  name                 String        @db.VarChar(255)
+  sanityProjectId      String        @db.VarChar(255)
+  domain               String?       @unique @db.VarChar(255)
+  status               TenantStatus  @default(active)
+  plan                 PlanType      @default(free)
+  config               Json?         @default("{\"theme\":{\"primaryColor\":\"#3B82F6\",\"secondaryColor\":\"#10B981\",\"fontFamily\":\"Inter\",\"borderRadius\":\"8px\",\"darkMode\":false},\"features\":{\"maxUsers\":5,\"customDomain\":false,\"apiAccess\":false,\"advancedAnalytics\":false},\"branding\":{\"logoUrl\":null,\"faviconUrl\":null,\"customCSS\":null}}")
+  trial_ends_at        DateTime?     @db.Timestamptz
+  subscription_ends_at DateTime?     @db.Timestamptz
+  created_at           DateTime      @default(now()) @db.Timestamptz
+  updated_at           DateTime      @updatedAt @db.Timestamptz
+  deleted_at           DateTime?     @db.Timestamptz
+  settings             TenantSetting[]
+  users                User[]
+  auditLogs            AuditLog[]
+  apiKeys              ApiKey[]
+  posts                Post[]
+  deployments          Deployment[]
+  @@map("tenants")
+}
+
+model TenantSetting {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenant_id  String   @db.Uuid
+  key        String   @db.VarChar(255)
+  value      Json?
+  created_at DateTime @default(now()) @db.Timestamptz
+  updated_at DateTime @updatedAt @db.Timestamptz
+  tenant     Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  @@unique([tenant_id, key])
+  @@index([tenant_id])
+  @@map("tenant_settings")
+}
+
+model User {
+  id               String   @id @default(uuid()) @db.Uuid
+  tenant_id        String   @db.Uuid
+  email            String   @db.VarChar(255)
+  name             String?  @db.VarChar(255)
+  role             UserRole @default(member)
+  password_hash    String?  @db.VarChar(255)
+  email_verified   Boolean  @default(false)
+  last_login_at    DateTime? @db.Timestamptz
+  created_at       DateTime @default(now()) @db.Timestamptz
+  updated_at       DateTime @updatedAt @db.Timestamptz
+  deleted_at       DateTime? @db.Timestamptz
+  tenant           Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  auditLogs        AuditLog[]
+  posts            Post[]
+  @@unique([tenant_id, email])
+  @@index([tenant_id])
+  @@map("users")
+}
+
+model AuditLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenant_id     String   @db.Uuid
+  user_id       String?  @db.Uuid
+  action        String   @db.VarChar(100)
+  resource_type String?  @db.VarChar(100)
+  resource_id   String?  @db.Uuid
+  changes       Json?
+  ip_address    String?  @db.Inet
+  user_agent    String?  @db.Text
+  created_at    DateTime @default(now()) @db.Timestamptz
+  tenant        Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  user          User?    @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  @@index([tenant_id])
+  @@index([user_id])
+  @@map("audit_logs")
+}
+
+model ApiKey {
+  id           String    @id @default(uuid()) @db.Uuid
+  tenant_id    String    @db.Uuid
+  name         String    @db.VarChar(255)
+  key_hash     String    @unique @db.VarChar(255)
+  last_used_at DateTime? @db.Timestamptz
+  expires_at   DateTime? @db.Timestamptz
+  scopes       Json?     @default("[\"read\"]")
+  created_at   DateTime  @default(now()) @db.Timestamptz
+  revoked_at   DateTime? @db.Timestamptz
+  tenant       Tenant    @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  @@index([tenant_id])
+  @@map("api_keys")
+}
+
+model Post {
+  id           String    @id @default(uuid()) @db.Uuid
+  tenant_id    String    @db.Uuid
+  author_id    String    @db.Uuid
+  title        String    @db.VarChar(255)
+  slug         String    @db.VarChar(255)
+  content      String?   @db.Text
+  published    Boolean   @default(false)
+  published_at DateTime? @db.Timestamptz
+  metadata     Json?     @default("{}")
+  created_at   DateTime  @default(now()) @db.Timestamptz
+  updated_at   DateTime  @updatedAt @db.Timestamptz
+  deleted_at   DateTime? @db.Timestamptz
+  tenant       Tenant    @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  author       User      @relation(fields: [author_id], references: [id], onDelete: Cascade)
+  @@unique([tenant_id, slug])
+  @@index([tenant_id])
+  @@index([author_id])
+  @@map("posts")
 }

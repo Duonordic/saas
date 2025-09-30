@@ -1,0 +1,29 @@
+"use client";
+
+import { Switch } from "@/components/ui/switch";
+
+interface NotificationToggleProps {
+  id: string;
+  label: string;
+  description: string;
+  defaultChecked: boolean;
+}
+
+export function NotificationToggle({
+  id,
+  label,
+  description,
+  defaultChecked,
+}: NotificationToggleProps) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div className="flex-1">
+        <label htmlFor={id} className="text-sm font-medium cursor-pointer">
+          {label}
+        </label>
+        <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+      </div>
+      <Switch id={id} defaultChecked={defaultChecked} />
+    </div>
+  );
+}

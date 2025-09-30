@@ -1,11 +1,13 @@
 "use client";
 
+import { TenantHealth } from "@/components/tenant-health";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tenant } from "@/generated/prisma";
 import { useState, useEffect } from "react";
 
 export default function AdminDashboard() {
-  const [tenants, setTenants] = useState<any[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
   const [subdomain, setSubdomain] = useState("");
   const [companyName, setCompanyName] = useState("");
 
@@ -40,16 +42,25 @@ export default function AdminDashboard() {
     }
   }
 
-  async function deleteTenant(subdomain: string) {
-    if (!confirm(`Delete tenant '${subdomain}'?`)) return;
+  async function deleteTenant(domain: string) {
+    if (!confirm(`Delete tenant '${domain}'?`)) return;
 
     await fetch("/api/admin/tenants", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ subdomain }),
+      body: JSON.stringify({ domain }),
     });
 
     loadTenants();
+  }
+
+  function handleDelete(domain: string | null) {
+    if (domain) {
+      deleteTenant(domain);
+      return;
+    }
+
+    console.warn("No registered domain to delete.");
   }
 
   return (
@@ -97,9 +108,9 @@ export default function AdminDashboard() {
               <div key={tenant.id} className="border rounded p-4">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="font-semibold">{tenant.companyName}</h3>
+                    <h3 className="font-semibold">{tenant.name}</h3>
                     <p className="text-sm text-gray-600">
-                      Subdomain: {tenant.subdomain}
+                      Subdomain: {tenant.domain}
                     </p>
                     <p className="text-xs text-gray-500">
                       Sanity: {tenant.sanityProjectId}
@@ -107,20 +118,21 @@ export default function AdminDashboard() {
                   </div>
                   <div className="space-x-2">
                     <a
-                      href={`/?tenant=${tenant.subdomain}`}
+                      href={`/?tenant=${tenant.domain}`}
                       target="_blank"
                       className="text-blue-500 text-sm hover:underline"
                     >
                       Visit Site
                     </a>
-                    <button
-                      onClick={() => deleteTenant(tenant.subdomain)}
-                      className="text-red-500 text-sm hover:underline"
+                    <Button
+                      onClick={() => handleDelete(tenant.domain)}
+                      variant="destructive"
                     >
                       Delete
-                    </button>
+                    </Button>
                   </div>
                 </div>
+                <TenantHealth tenantId={tenant.id} />
               </div>
             ))}
           </div>
