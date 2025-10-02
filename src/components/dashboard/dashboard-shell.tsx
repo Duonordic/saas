@@ -37,7 +37,7 @@ export async function DashboardShell({
     <SidebarProvider defaultOpen>
       <AppSidebar tenant={tenant} />
 
-      <SidebarInset className="border bg-background">
+      <SidebarInset className="border bg-background h-[calc(100vh-1rem)] overflow-hidden">
         <header className="flex h-16 shrink-0 items-center gap-2">
           <div className="flex items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1" />
@@ -72,7 +72,7 @@ export async function DashboardShell({
           </div>
         </header>
 
-        <div className="p-4">{children}</div>
+        <div className="flex-1 min-h-0 overflow-hidden">{children}</div>
       </SidebarInset>
     </SidebarProvider>
   );

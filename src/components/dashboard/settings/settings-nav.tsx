@@ -30,7 +30,7 @@ const navItems = [
 
 export function SettingsNav({ currentSection }: SettingsNavProps) {
   return (
-    <nav className="space-y-1">
+    <nav className="bg-background">
       {navItems.map((item) => {
         const Icon = item.icon;
         const isActive = currentSection === item.id;
@@ -40,7 +40,7 @@ export function SettingsNav({ currentSection }: SettingsNavProps) {
             key={item.id}
             href={`/dashboard/settings/${item.id}`}
             className={cn(
-              "flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors",
+              "flex items-center gap-3 px-3 py-2 text-sm transition-colors w-full",
               isActive
                 ? "bg-accent text-accent-foreground font-medium"
                 : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"

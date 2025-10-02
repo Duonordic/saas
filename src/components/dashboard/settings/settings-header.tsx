@@ -7,7 +7,7 @@ interface SettingsHeaderProps {
 
 export function SettingsHeader({ tenant }: SettingsHeaderProps) {
   return (
-    <div className="flex items-start justify-between pb-6 border-b">
+    <div className="p-4 flex items-start justify-between pb-6 border-b">
       <div className="space-y-1">
         <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
         <p className="text-sm text-muted-foreground">

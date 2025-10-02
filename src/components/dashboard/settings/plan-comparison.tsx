@@ -41,7 +41,18 @@ export default function PlanComparison({ currentPlan }: PlanComparisonProps) {
               className="w-full"
               disabled={plan === currentPlan}
             >
-              {plan === currentPlan ? "Current Plan" : "Upgrade"}
+              {plan === currentPlan && "Current Plan"}
+              {plan === "pro" &&
+                (currentPlan === "free" || currentPlan === "starter") &&
+                "Upgrade"}
+              {plan === "pro" &&
+                (currentPlan === "free" || currentPlan === "starter") &&
+                "Upgrade"}
+              {plan === "starter" && currentPlan === "free" && "Upgrade"}
+              {plan === "starter" &&
+                (currentPlan === "pro" || currentPlan === "enterprise") &&
+                "Downgrade"}
+              {plan === "enterprise" && currentPlan === "pro" && "Upgrade"}
             </Button>
           </div>
         ))}

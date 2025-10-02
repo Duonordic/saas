@@ -9,9 +9,13 @@ export function CreateApiKeyButton() {
   };
 
   return (
-    <Button onClick={handleCreate} size="sm">
+    <Button
+      className="rounded-none bg-primary/20 border-l h-9"
+      onClick={handleCreate}
+      size="sm"
+    >
       <Bot />
-      Create Key
+      Create New Key
     </Button>
   );
 }

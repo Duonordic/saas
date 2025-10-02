@@ -1,7 +1,13 @@
-import { SettingField } from "./setting-field";
-import { Tenant } from "@/generated/prisma";
 import { SettingSection } from "./settings-section";
+import { Tenant } from "@/generated/prisma";
 import { SaveButton } from "@/components/ui/buttons/save-button";
+import {
+  GridRow,
+  GridSpacer,
+  GridStats,
+  GridStatItem,
+  GridDecorative,
+} from "@/components/ui/grid";
 
 interface GeneralSettingsProps {
   tenant: Partial<Tenant>;
@@ -9,29 +15,29 @@ interface GeneralSettingsProps {
 
 export function GeneralSettings({ tenant }: GeneralSettingsProps) {
   return (
-    <div className="space-y-8">
+    <div className="flex-1 min-h-0">
       <SettingSection
         title="Workspace Information"
         description="Basic information about your workspace"
       >
-        <SettingField
+        <GridSpacer />
+        <GridRow
+          isFirst
           label="Workspace Name"
           description="This is the display name for your workspace"
-          htmlFor="workspace-name"
         >
           <input
             id="workspace-name"
             name="name"
             type="text"
             defaultValue={tenant.name}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           />
-        </SettingField>
+        </GridRow>
 
-        <SettingField
+        <GridRow
           label="Workspace Slug"
           description="Used in your workspace URL and API endpoints"
-          htmlFor="workspace-slug"
         >
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">
@@ -42,47 +48,53 @@ export function GeneralSettings({ tenant }: GeneralSettingsProps) {
               name="slug"
               type="text"
               defaultValue={tenant.slug}
-              className="flex h-10 w-full max-w-xs rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-10 w-full max-w-xs rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             />
           </div>
-        </SettingField>
+        </GridRow>
 
-        <SettingField
+        <GridRow
           label="Sanity Project ID"
           description="Your headless CMS project identifier"
-          htmlFor="sanity-id"
         >
           <input
             id="sanity-id"
             name="sanityProjectId"
             type="text"
+            disabled
             defaultValue={tenant.sanityProjectId}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           />
-        </SettingField>
+        </GridRow>
+
+        <GridSpacer />
       </SettingSection>
 
       <SettingSection
+        className="h-full"
         title="Workspace Status"
         description="Current state of your workspace"
       >
-        <div className="grid grid-cols-2 gap-4 p-4 border border-dashed rounded-md">
-          <div>
-            <div className="text-sm font-medium">Status</div>
-            <div className="text-sm text-muted-foreground capitalize mt-1">
-              {tenant.status || "active"}
-            </div>
-          </div>
-          <div>
-            <div className="text-sm font-medium">Plan</div>
-            <div className="text-sm text-muted-foreground capitalize mt-1">
-              {tenant.plan || "free"}
-            </div>
-          </div>
-        </div>
+        <GridSpacer />
+
+        <GridStats columns={3}>
+          <GridStatItem
+            label="Status"
+            value={tenant.status || "active"}
+            subtitle={"Active"}
+          />
+          <GridStatItem
+            label="Plan"
+            value={tenant.plan || "free"}
+            subtitle="Billed monthly"
+          />
+          <GridDecorative className="bg-background-dark" pattern="crosshatch" />
+        </GridStats>
+
+        <GridSpacer />
       </SettingSection>
 
-      <div className="flex justify-end pt-4 border-t">
+      <div className="flex justify-end p-4 border-l bg-background-light border-t">
         <SaveButton />
       </div>
     </div>

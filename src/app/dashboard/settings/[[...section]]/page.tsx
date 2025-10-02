@@ -8,6 +8,7 @@ import { SecuritySettings } from "@/components/dashboard/settings/security-setti
 import { SettingsHeader } from "@/components/dashboard/settings/settings-header";
 import { SettingsNav } from "@/components/dashboard/settings/settings-nav";
 import { TeamSettings } from "@/components/dashboard/settings/team-settings";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { getCurrentTenant } from "@/utils/tenant-utils";
 import { notFound } from "next/navigation";
 
@@ -27,13 +28,13 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
   }
 
   return (
-    <div className="flex-1 space-y-8">
+    <div className="h-full flex flex-col overflow-hidden">
       <SettingsHeader tenant={tenant} />
 
-      <div className="grid grid-cols-[240px_1fr] gap-12">
+      <div className="flex-1 min-h-0 grid grid-cols-[180px_1fr]">
         <SettingsNav currentSection={section} />
 
-        <div className="space-y-8">
+        <ScrollArea className="h-full overflow-y-auto">
           {section === "general" && <GeneralSettings tenant={tenant} />}
           {section === "domain" && <DomainSettings tenant={tenant} />}
           {section === "branding" && <BrandingSettings tenant={tenant} />}
@@ -44,7 +45,7 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
           {section === "security" && <SecuritySettings tenant={tenant} />}
           {section === "billing" && <BillingSettings tenant={tenant} />}
           {section === "api" && <ApiSettings tenant={tenant} />}
-        </div>
+        </ScrollArea>
       </div>
     </div>
   );
